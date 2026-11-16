@@ -22,6 +22,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Locate app
+        id: app
+        shell: bash
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "directory=frontend" >> "$GITHUB_OUTPUT"
+          elif [ -f package.json ]; then
+            echo "directory=." >> "$GITHUB_OUTPUT"
+          else
+            echo "No package.json found at the repository root or in frontend/" >&2
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -30,13 +42,13 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Install dependencies
         run: npm ci
-        working-directory: frontend
+        working-directory: ${{ steps.app.outputs.directory }}
       - name: Build frontend
         run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/"
-        working-directory: frontend
+        working-directory: ${{ steps.app.outputs.directory }}
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/dist
+          path: ${{ steps.app.outputs.directory }}/dist
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
